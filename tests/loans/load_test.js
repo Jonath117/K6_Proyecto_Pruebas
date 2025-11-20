@@ -1,38 +1,48 @@
 import { sleep } from 'k6';
 import { createLoan } from '../../lib/api_placeholder.js';
+import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.1/index.js';
+import { htmlReport } from "https://raw.githubusercontent.com/benc-uk/k6-reporter/main/dist/bundle.js";
 
-// Cargar el JSON en la fase de inicialización
 const loanData = JSON.parse(open('../../data/loan.json'));
 
 export const options = {
     stages: [
-        { duration: '1m', target: 10 }, // Subir suavemente
-        { duration: '3m', target: 10 }, // Mantener tráfico constante
-        { duration: '1m', target: 0 },  // Bajar
+        { duration: '1m', target: 10 },
+        { duration: '3m', target: 10 },
+        { duration: '1m', target: 0 },
     ],
     thresholds: {
-        http_req_duration: ['p(95)<600'], // Escrituras suelen ser más lentas que lecturas
-        http_req_failed: ['rate<0.05'],   // Toleramos 5% de fallos (por colisiones de libros)
+        http_req_duration: ['p(95)<600'],
+        http_req_failed: ['rate<0.05'],
     },
 };
 
-// Función para obtener fecha futura (ISO string)
 function getFutureDate(days) {
     const date = new Date();
     date.setDate(date.getDate() + days);
-    return date.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+    return date.toISOString().split('T')[0];
 }
 
 export default function () {
-    // Clonamos el objeto y aleatorizamos IDs para evitar conflictos de "Libro ya prestado"
-    // Asumimos que tienes usuarios del 1 al 1000 y libros del 1 al 1000 en tu DB seed
     const payload = Object.assign({}, loanData, {
         userId: Math.floor(Math.random() * 1000) + 1,
         bookId: Math.floor(Math.random() * 1000) + 1,
-        dueDate: getFutureDate(7) // Préstamo por 7 días
+        dueDate: getFutureDate(7)
     });
 
     createLoan(payload);
     
     sleep(1); 
+}
+
+export function handleSummary(data) {
+    const reportName = __ENV.REPORT_NAME || 'loans_load_test';
+    const pathJson = `./reportes_finales/${reportName}.json`;
+    const pathHtml = `./reportes_finales/${reportName}.html`;
+  
+    return {
+        'stdout': textSummary(data, { indent: ' ', enableColors: true }), 
+        [pathJson]: JSON.stringify(data), 
+        [pathHtml]: htmlReport(data), 
+    };
 }

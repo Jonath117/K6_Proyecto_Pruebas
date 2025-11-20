@@ -1,11 +1,14 @@
 import { sleep } from 'k6';
 import { createBook } from '../../lib/api_placeholder.js';
 
+import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.1/index.js';
+import { htmlReport } from "https://raw.githubusercontent.com/benc-uk/k6-reporter/main/dist/bundle.js";
+
 export const options = {
     stages: [
-        { duration: '1m', target: 10 }, // Subida suave
-        { duration: '3m', target: 10 }, // Mantener carga
-        { duration: '1m', target: 0 },  // Bajada
+        { duration: '1m', target: 10 }, 
+        { duration: '1m', target: 10 }, 
+        { duration: '1m', target: 0 },  
     ],
     thresholds: {
         http_req_duration: ['p(95)<500'], 
@@ -14,20 +17,32 @@ export const options = {
 };
 
 export default function () {
-    // Generador de ISBN único simple para evitar conflictos
     const uniqueCode = `${__VU}${__ITER}${Date.now().toString().slice(-4)}`;
-    
     const payload = {
         title: `K6 Test Book ${uniqueCode}`,
         author: "K6 Automated Author",
-        isbn: `978-0-${uniqueCode}-1`, // ISBN simulado único
+        isbn: `978-0-${uniqueCode}-1`,
         publicationYear: 2024,
-        categoryId: 1, // Asegúrate que la categoría ID 1 exista en tu DB
+        categoryId: 1,
         totalQuantity: 50,
         availableQuantity: 50
     };
 
     createBook(payload);
-    
     sleep(1); 
+}
+
+export function handleSummary(data) {
+    const reportName = __ENV.REPORT_NAME || 'books_load_test';
+    
+    const pathJson = `./reportes_finales/${reportName}.json`;
+    const pathHtml = `./reportes_finales/${reportName}.html`;
+  
+    return {
+        'stdout': textSummary(data, { indent: ' ', enableColors: true }), 
+        
+        [pathJson]: JSON.stringify(data), 
+        
+        [pathHtml]: htmlReport(data), 
+    };
 }

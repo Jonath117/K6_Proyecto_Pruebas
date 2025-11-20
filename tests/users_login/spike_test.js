@@ -1,19 +1,32 @@
 import { sleep } from 'k6';
 import { getBooks, getCategories } from '../../lib/api_placeholder.js';
+import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.1/index.js';
+import { htmlReport } from "https://raw.githubusercontent.com/benc-uk/k6-reporter/main/dist/bundle.js";
 
 export const options = {
     stages: [
-        { duration: '30s', target: 10 },  // Calentamiento
-        { duration: '1m', target: 400 },  // SPIKE: Subida brutal a 400 usuarios
-        { duration: '2m', target: 400 },  // Mantener el pico
-        { duration: '1m', target: 10 },   // Bajada rápida
-        { duration: '1m', target: 0 },    // Fin
+        { duration: '30s', target: 10 },
+        { duration: '1m', target: 400 },
+        { duration: '2m', target: 400 },
+        { duration: '1m', target: 10 },
+        { duration: '1m', target: 0 },
     ],
 };
 
 export default function () {
-    // Durante un spike, nos interesa ver si las APIs de lectura aguantan
     getBooks();
     getCategories();
     sleep(1);
+}
+
+export function handleSummary(data) {
+    const reportName = __ENV.REPORT_NAME || 'users_login_spike_test';
+    const pathJson = `./reportes_finales/${reportName}.json`;
+    const pathHtml = `./reportes_finales/${reportName}.html`;
+  
+    return {
+        'stdout': textSummary(data, { indent: ' ', enableColors: true }), 
+        [pathJson]: JSON.stringify(data), 
+        [pathHtml]: htmlReport(data), 
+    };
 }

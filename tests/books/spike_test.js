@@ -1,13 +1,20 @@
 import { sleep } from 'k6';
 import { createBook } from '../../lib/api_placeholder.js';
+import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.1/index.js';
+import { htmlReport } from "https://raw.githubusercontent.com/benc-uk/k6-reporter/main/dist/bundle.js";
 
 export const options = {
+
     stages: [
-        { duration: '30s', target: 5 },   // Calentamiento
-        { duration: '1m', target: 200 },  // SPIKE: 200 VUs insertando libros a la vez
-        { duration: '1m', target: 200 },  // Mantener pico
-        { duration: '30s', target: 0 },   // Enfriamiento
+        { duration: '30s', target: 5 },   
+        { duration: '1m', target: 200 },  
+        { duration: '1m', target: 200 },  
+        { duration: '30s', target: 0 },   
     ],
+
+    thresholds: {
+        http_req_failed: ['rate<0.05'], 
+    },
 };
 
 export default function () {
@@ -25,4 +32,17 @@ export default function () {
 
     createBook(payload);
     sleep(1);
+}
+
+export function handleSummary(data) {
+    const reportName = __ENV.REPORT_NAME || 'books_spike_test';
+    
+    const pathJson = `./reportes_finales/${reportName}.json`;
+    const pathHtml = `./reportes_finales/${reportName}.html`;
+  
+    return {
+        'stdout': textSummary(data, { indent: ' ', enableColors: true }), 
+        [pathJson]: JSON.stringify(data), 
+        [pathHtml]: htmlReport(data), 
+    };
 }
